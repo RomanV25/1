@@ -2,13 +2,13 @@ services:
   - type: web
     name: telegram-bot
     runtime: python
-    pythonVersion: "3.9"
+    pythonVersion: "3.9"  # Специфічно вказуємо 3.9
     buildCommand: |
-      python -m pip install --upgrade pip
+      pip install --upgrade pip
       pip install -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT main:wsgi_app --timeout 120
     envVars:
       - key: BOT_TOKEN
         value: 7933326437:AAHoqJ91uRle8l4KhNlyGjaMURo1JdP2Ssk  # Ваш токен
       - key: ADMIN_ID
-        value: "984209612"  # Ваш ID
+        value: "984209612"  # Обов'язково в лапках!
