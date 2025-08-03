@@ -187,6 +187,7 @@ def handle_all_messages(message):
         bot.send_message(message.chat.id, f"❌ Помилка: {e}")
 
 # Запуск додатку
+wsgi_app = app
 if __name__ == '__main__':
     init_db()
     bot.remove_webhook()
