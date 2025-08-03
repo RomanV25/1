@@ -2,7 +2,7 @@ services:
   - type: web
     name: telegram-bot
     runtime: python
-    pythonVersion: "3.9"  # Специфікуємо версію Python
+    pythonVersion: "3.9"
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
