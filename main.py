@@ -19,15 +19,23 @@ def home():
 def ping():
     return "Pong", 200
 
-# Конфігурація бота з перевіркою
-try:
-    BOT_TOKEN = os.environ['BOT_TOKEN']  # Викличе KeyError, якщо змінна відсутня
-    ADMIN_ID = int(os.environ['ADMIN_ID'])  # Викличе ValueError, якщо не число
-except KeyError as e:
-    raise RuntimeError(f"Не встановлено обов'язкову змінну оточення: {e}")
-except ValueError:
-    raise RuntimeError("ADMIN_ID має бути цілим числом")
+# Безпечне отримання конфігурації
+def get_config():
+    try:
+        bot_token = os.environ['BOT_TOKEN']
+        admin_id = os.environ['ADMIN_ID']
+        
+        # Перетворення ADMIN_ID в int з перевіркою
+        try:
+            admin_id = int(admin_id)
+        except ValueError:
+            raise ValueError("ADMIN_ID має бути цілим числом")
+            
+        return bot_token, admin_id
+    except KeyError as e:
+        raise RuntimeError(f"Відсутня обов'язкова змінна оточення: {e}")
 
+BOT_TOKEN, ADMIN_ID = get_config()
 bot = telebot.TeleBot(BOT_TOKEN)
 admin_id = ADMIN_ID
 
