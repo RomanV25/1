@@ -1,4 +1,5 @@
 from flask import Flask
+from werkzeug.urls import url_quote  # Додано для сумісності
 from threading import Thread
 import telebot
 from telebot import types
