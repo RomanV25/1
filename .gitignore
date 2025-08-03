@@ -1,4 +1,5 @@
+__pycache__/
+*.pyc
 *.db
-__pycache__
-.env
+*.env
 *.log
