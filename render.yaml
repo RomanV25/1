@@ -4,11 +4,11 @@ services:
     runtime: python
     pythonVersion: "3.9"
     buildCommand: |
-      pip install --upgrade pip
+      python -m pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT main:wsgi_app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT main:wsgi_app --timeout 120
     envVars:
       - key: BOT_TOKEN
-        value: ваш_токен
+        value: 7933326437:AAHoqJ91uRle8l4KhNlyGjaMURo1JdP2Ssk  # Ваш токен
       - key: ADMIN_ID
-        value: ваш_id
+        value: "984209612"  # Ваш ID
