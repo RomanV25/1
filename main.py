@@ -182,3 +182,4 @@ app_instance = app
 
 if __name__ == '__main__':
     run_bot()
+wsgi_app = app  # Для Gunicorn
