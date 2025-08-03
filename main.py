@@ -1,6 +1,5 @@
 from flask import Flask
 from werkzeug.urls import url_quote  # Додано для сумісності
-from threading import Thread
 import telebot
 from telebot import types
 import sqlite3
@@ -178,8 +177,7 @@ def run_bot():
     bot.polling(none_stop=True, interval=1, timeout=60)
 
 # Змінна для Gunicorn
-app_instance = app
+wsgi_app = app
 
 if __name__ == '__main__':
     run_bot()
-wsgi_app = app  # Для Gunicorn
