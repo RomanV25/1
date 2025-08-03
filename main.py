@@ -188,6 +188,7 @@ def handle_all_messages(message):
 
 # Запуск додатку
 wsgi_app = app
+
 if __name__ == '__main__':
     init_db()
     bot.remove_webhook()
