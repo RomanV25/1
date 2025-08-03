@@ -8,7 +8,7 @@ import random
 import string
 import os
 
-# Ініціалізація Flask-сервера
+# Ініціалізація Flask
 app = Flask(__name__)
 
 @app.route('/')
@@ -19,16 +19,9 @@ def home():
 def ping():
     return "Pong", 200
 
-def run_flask():
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-
-def keep_alive():
-    t = Thread(target=run_flask)
-    t.start()
-
 # Конфігурація бота
-BOT_TOKEN = os.environ.get('BOT_TOKEN', '7933326437:AAHoqJ91uRle8l4KhNlyGjaMURo1JdP2Ssk')
-ADMIN_ID = int(os.environ.get('ADMIN_ID', 984209612))
+BOT_TOKEN = os.environ.get('BOT_TOKEN')
+ADMIN_ID = int(os.environ.get('ADMIN_ID'))
 
 bot = telebot.TeleBot(BOT_TOKEN)
 admin_id = ADMIN_ID
@@ -178,8 +171,13 @@ def handle_all_messages(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Помилка: {e}")
 
-if __name__ == '__main__':
+def run_bot():
     init_db()
     print("🟢 Бот запущено!")
-    keep_alive()
     bot.polling(none_stop=True, interval=1, timeout=60)
+
+# Змінна для Gunicorn
+app_instance = app
+
+if __name__ == '__main__':
+    run_bot()
