@@ -1,3 +1,4 @@
+
 from flask import Flask, request
 import telebot
 from telebot import types
@@ -44,7 +45,7 @@ def webhook():
         return '', 200
     return 'Bad request', 400
 
-# Сторінка для встановлення вебхука
+# Сторінка для встановлення вебхука вручну (опціонально)
 @app.route('/set_webhook')
 def set_webhook():
     bot.remove_webhook()
@@ -56,7 +57,7 @@ def set_webhook():
 def home():
     return "Telegram Bot is running!"
 
-# --- Ваші оригінальні функції бота ---
+# --- Основні функції бота ---
 
 def send_to_admin(message, anon_id):
     try:
@@ -186,12 +187,10 @@ def handle_all_messages(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Помилка: {e}")
 
-# Запуск додатку
-wsgi_app = app
+# Автоматичний запуск вебхука при кожному деплої
+init_db()
+bot.remove_webhook()
+bot.set_webhook(url=WEBHOOK_URL)
+print(f"🟢 Вебхук встановлено на {WEBHOOK_URL}")
 
-if __name__ == '__main__':
-    init_db()
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    print(f"🟢 Бот запущено! Вебхук: {WEBHOOK_URL}")
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+wsgi_app = app
