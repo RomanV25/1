@@ -1,5 +1,5 @@
 import telebot
-from telebot import types
+from telebot import types, apihelper
 import sqlite3
 import time
 import random
@@ -12,6 +12,13 @@ if not os.environ.get('BOT_TOKEN') or not os.environ.get('ADMIN_ID'):
 
 bot = telebot.TeleBot(os.environ['BOT_TOKEN'])
 admin_id = int(os.environ['ADMIN_ID'])
+
+# Видалення вебхука перед запуском
+try:
+    apihelper.delete_webhook(os.environ['BOT_TOKEN'])
+    print("🔄 Вебхук успішно видалено")
+except Exception as e:
+    print(f"❌ Помилка при видаленні вебхука: {e}")
 
 # Ініціалізація БД
 def init_db():
@@ -164,4 +171,10 @@ def handle_all_messages(message):
 
 if __name__ == '__main__':
     print("🚀 Бот запущено в режимі Long Polling...")
-    bot.infinity_polling()
+    try:
+        bot.infinity_polling()
+    except Exception as e:
+        print(f"❌ Помилка: {e}")
+        time.sleep(5)
+        # Автоматичний перезапуск через 5 секунд
+        os.execv(sys.executable, ['python'] + sys.argv)
