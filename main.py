@@ -1,4 +1,3 @@
-
 from flask import Flask, request
 import telebot
 from telebot import types
@@ -8,17 +7,25 @@ import random
 import string
 import os
 
-# Ініціалізація додатку
+# Ініціалізація Flask
 app = Flask(__name__)
 
-# Конфігурація бота
-BOT_TOKEN = os.environ['BOT_TOKEN']
-ADMIN_ID = int(os.environ['ADMIN_ID'])
-WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/webhook"
+# Перевірка та ініціалізація конфігурації
+if not os.environ.get('BOT_TOKEN') or not os.environ.get('ADMIN_ID'):
+    raise RuntimeError("Не встановлено BOT_TOKEN або ADMIN_ID")
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = telebot.TeleBot(os.environ['BOT_TOKEN'])
+admin_id = int(os.environ['ADMIN_ID'])
 
-# Ініціалізація бази даних
+# Налаштування вебхука
+try:
+    WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/webhook"
+    if not WEBHOOK_URL.startswith('https://'):
+        raise ValueError("Некоректний URL вебхука")
+except Exception as e:
+    raise RuntimeError(f"Помилка вебхука: {e}")
+
+# Ініціалізація БД
 def init_db():
     conn = sqlite3.connect('users.db', check_same_thread=False)
     c = conn.cursor()
@@ -31,11 +38,20 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Генерація анонімного ID
-def generate_anon_id():
-    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+# Встановлення вебхука
+init_db()
+try:
+    bot.remove_webhook()
+    bot.set_webhook(url=WEBHOOK_URL)
+    print(f"✅ Вебхук активовано: {WEBHOOK_URL}")
+except Exception as e:
+    print(f"❌ Помилка вебхука: {e}")
+    raise
 
-# Обробник вебхука
+# Змінна для Gunicorn
+wsgi_app = app
+
+# Вебхук-ендпоінт
 @app.route('/webhook', methods=['POST'])
 def webhook():
     if request.headers.get('content-type') == 'application/json':
@@ -45,51 +61,56 @@ def webhook():
         return '', 200
     return 'Bad request', 400
 
-# Сторінка для встановлення вебхука вручну (опціонально)
-@app.route('/set_webhook')
-def set_webhook():
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    return f"Webhook встановлено на {WEBHOOK_URL}", 200
-
-# Головна сторінка
 @app.route('/')
 def home():
     return "Telegram Bot is running!"
 
-# --- Основні функції бота ---
+@app.route('/set_webhook')
+def set_webhook():
+    try:
+        bot.remove_webhook()
+        bot.set_webhook(url=WEBHOOK_URL)
+        return f"Webhook встановлено на {WEBHOOK_URL}", 200
+    except Exception as e:
+        return f"Помилка: {str(e)}", 500
 
+# Генерація анонімного ID
+def generate_anon_id():
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+
+# Функція для відправки повідомлення адміну
 def send_to_admin(message, anon_id):
     try:
         info_msg = f"📨 Нове повідомлення від аноніма #{anon_id}\n👤 User ID: {message.from_user.id}\n📅 Час: {time.strftime('%Y-%m-%d %H:%M:%S')}"
 
         if message.content_type == 'text':
-            bot.send_message(ADMIN_ID, info_msg)
-            bot.send_message(ADMIN_ID, message.text)
+            bot.send_message(admin_id, info_msg)
+            bot.send_message(admin_id, message.text)
         elif message.content_type == 'photo':
-            bot.send_message(ADMIN_ID, info_msg)
-            bot.send_photo(ADMIN_ID, message.photo[-1].file_id, caption=message.caption)
+            bot.send_message(admin_id, info_msg)
+            bot.send_photo(admin_id, message.photo[-1].file_id, caption=message.caption)
         elif message.content_type == 'video':
-            bot.send_message(ADMIN_ID, info_msg)
-            bot.send_video(ADMIN_ID, message.video.file_id, caption=message.caption)
+            bot.send_message(admin_id, info_msg)
+            bot.send_video(admin_id, message.video.file_id, caption=message.caption)
         elif message.content_type == 'voice':
-            bot.send_message(ADMIN_ID, info_msg)
-            bot.send_voice(ADMIN_ID, message.voice.file_id)
+            bot.send_message(admin_id, info_msg)
+            bot.send_voice(admin_id, message.voice.file_id)
         elif message.content_type == 'audio':
-            bot.send_message(ADMIN_ID, info_msg)
-            bot.send_audio(ADMIN_ID, message.audio.file_id)
+            bot.send_message(admin_id, info_msg)
+            bot.send_audio(admin_id, message.audio.file_id)
         elif message.content_type == 'document':
-            bot.send_message(ADMIN_ID, info_msg)
-            bot.send_document(ADMIN_ID, message.document.file_id, caption=message.caption)
+            bot.send_message(admin_id, info_msg)
+            bot.send_document(admin_id, message.document.file_id, caption=message.caption)
 
         markup = types.InlineKeyboardMarkup()
         reply_btn = types.InlineKeyboardButton("💬 Відповісти", callback_data=f"reply_{anon_id}")
         markup.add(reply_btn)
-        bot.send_message(ADMIN_ID, "Оберіть дію:", reply_markup=markup)
+        bot.send_message(admin_id, "Оберіть дію:", reply_markup=markup)
 
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Помилка при відправці: {e}")
+        bot.send_message(admin_id, f"❌ Помилка при відправці: {e}")
 
+# Обробники повідомлень
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -126,10 +147,10 @@ def handle_reply_callback(call):
     try:
         anon_id = call.data.split('_')[1]
         bot.answer_callback_query(call.id, f"Відповідаємо аноніму #{anon_id}")
-        msg = bot.send_message(ADMIN_ID, f"Напишіть відповідь для #{anon_id}:")
+        msg = bot.send_message(admin_id, f"Напишіть відповідь для #{anon_id}:")
         bot.register_next_step_handler(msg, lambda m: process_admin_reply(m, anon_id))
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Помилка: {e}")
+        bot.send_message(admin_id, f"❌ Помилка: {e}")
 
 def process_admin_reply(message, anon_id):
     try:
@@ -155,12 +176,12 @@ def process_admin_reply(message, anon_id):
 
             c.execute("UPDATE user_messages SET active=0 WHERE anon_id=?", (anon_id,))
             conn.commit()
-            bot.send_message(ADMIN_ID, f"✅ Відповідь для #{anon_id} відправлена!")
+            bot.send_message(admin_id, f"✅ Відповідь для #{anon_id} відправлена!")
         else:
-            bot.send_message(ADMIN_ID, f"❌ Анонім #{anon_id} не знайдений")
+            bot.send_message(admin_id, f"❌ Анонім #{anon_id} не знайдений")
         conn.close()
     except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Помилка: {e}")
+        bot.send_message(admin_id, f"❌ Помилка: {e}")
 
 @bot.message_handler(content_types=['text', 'photo', 'video', 'voice', 'audio', 'document'])
 def handle_all_messages(message):
@@ -187,10 +208,5 @@ def handle_all_messages(message):
     except Exception as e:
         bot.send_message(message.chat.id, f"❌ Помилка: {e}")
 
-# Автоматичний запуск вебхука при кожному деплої
-init_db()
-bot.remove_webhook()
-bot.set_webhook(url=WEBHOOK_URL)
-print(f"🟢 Вебхук встановлено на {WEBHOOK_URL}")
-
-wsgi_app = app
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
