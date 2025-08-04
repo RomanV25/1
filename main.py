@@ -1,4 +1,3 @@
-from flask import Flask, request
 import telebot
 from telebot import types
 import sqlite3
@@ -7,23 +6,12 @@ import random
 import string
 import os
 
-# Ініціалізація Flask
-app = Flask(__name__)
-
-# Перевірка та ініціалізація конфігурації
+# Ініціалізація бота
 if not os.environ.get('BOT_TOKEN') or not os.environ.get('ADMIN_ID'):
     raise RuntimeError("Не встановлено BOT_TOKEN або ADMIN_ID")
 
 bot = telebot.TeleBot(os.environ['BOT_TOKEN'])
 admin_id = int(os.environ['ADMIN_ID'])
-
-# Налаштування вебхука
-try:
-    WEBHOOK_URL = f"https://{os.environ.get('RENDER_EXTERNAL_HOSTNAME')}/webhook"
-    if not WEBHOOK_URL.startswith('https://'):
-        raise ValueError("Некоректний URL вебхука")
-except Exception as e:
-    raise RuntimeError(f"Помилка вебхука: {e}")
 
 # Ініціалізація БД
 def init_db():
@@ -38,47 +26,13 @@ def init_db():
     conn.commit()
     conn.close()
 
-# Встановлення вебхука
 init_db()
-try:
-    bot.remove_webhook()
-    bot.set_webhook(url=WEBHOOK_URL)
-    print(f"✅ Вебхук активовано: {WEBHOOK_URL}")
-except Exception as e:
-    print(f"❌ Помилка вебхука: {e}")
-    raise
-
-# Змінна для Gunicorn
-wsgi_app = app
-
-# Вебхук-ендпоінт
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if request.headers.get('content-type') == 'application/json':
-        json_string = request.get_data().decode('utf-8')
-        update = telebot.types.Update.de_json(json_string)
-        bot.process_new_updates([update])
-        return '', 200
-    return 'Bad request', 400
-
-@app.route('/')
-def home():
-    return "Telegram Bot is running!"
-
-@app.route('/set_webhook')
-def set_webhook():
-    try:
-        bot.remove_webhook()
-        bot.set_webhook(url=WEBHOOK_URL)
-        return f"Webhook встановлено на {WEBHOOK_URL}", 200
-    except Exception as e:
-        return f"Помилка: {str(e)}", 500
 
 # Генерація анонімного ID
 def generate_anon_id():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
-# Функція для відправки повідомлення адміну
+# Відправка повідомлення адміну
 def send_to_admin(message, anon_id):
     try:
         info_msg = f"📨 Нове повідомлення від аноніма #{anon_id}\n👤 User ID: {message.from_user.id}\n📅 Час: {time.strftime('%Y-%m-%d %H:%M:%S')}"
@@ -110,7 +64,7 @@ def send_to_admin(message, anon_id):
     except Exception as e:
         bot.send_message(admin_id, f"❌ Помилка при відправці: {e}")
 
-# Обробники повідомлень
+# Обробники команд
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -209,4 +163,5 @@ def handle_all_messages(message):
         bot.send_message(message.chat.id, f"❌ Помилка: {e}")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    print("🚀 Бот запущено в режимі Long Polling...")
+    bot.infinity_polling()
