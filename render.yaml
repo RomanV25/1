@@ -6,7 +6,7 @@ services:
     buildCommand: |
       pip install --upgrade pip
       pip install -r requirements.txt
-    startCommand: gunicorn --bind 0.0.0.0:$PORT main:app  # Змінив з main:wsgi_app на main:app
+    startCommand: gunicorn --bind 0.0.0.0:$PORT main:wsgi_app --timeout 120
     envVars:
       - key: BOT_TOKEN
         value: 8446132964:AAHI0HN0cHH9Y1m8ktkHWYoDqoUe6iGb2LI  # У лапках
